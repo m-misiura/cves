@@ -191,9 +191,14 @@
     <div class="slides">
 
 
-<section>
 <section id="dealing-with-the-cves" class="title-slide slide level1 center" data-background-iframe="ambient/index.html">
 <h1>Dealing with the CVEs</h1>
+
+</section>
+
+<section>
+<section id="part-1-initial-pearls-of-wisdom" class="title-slide slide level1 center">
+<h1>Part 1: Initial pearls of wisdom</h1>
 
 </section>
 <section id="addressing-cves-often-feels-like-this" class="slide level2">
@@ -479,6 +484,212 @@
 <blockquote>
 <p>it might be prudent to attach this evidence to the CVE tracker and PR, so that the reviewer can access it easily</p>
 </blockquote>
+</div>
+</section></section>
+<section>
+<section id="part-2-towards-a-more-unified-cve-handling" class="title-slide slide level1 center">
+<h1>Part 2: Towards a more unified CVE handling</h1>
+
+</section>
+<section id="quick-background" class="slide level2">
+<h2><span class="emoji" data-emoji="page_facing_up">📄</span> Quick background</h2>
+
+<img data-src="img/farmer_meme.jpg" class="quarto-figure quarto-figure-center r-stretch"><div class="fragment">
+<p>In Part 2 of this presention, we will cover:</p>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<ul>
+<li>practical lessons from the past few months of clearing the CVE backlog</li>
+</ul>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<ul>
+<li>how to unify the CVE handling in the future, including automation and IC</li>
+</ul>
+</div>
+</section>
+<section id="initiatives-to-keep-an-eye-on" class="slide level2">
+<h2><span class="emoji" data-emoji="eyes">👀</span> Initiatives to keep an eye on</h2>
+
+<img data-src="img/the_world_meme.png" class="quarto-figure quarto-figure-center r-stretch"><div class="fragment fade-in-then-semi-out">
+<p><span class="citation" data-cites="talayan">@talayan</span> is in the process of <a href="https://docs.google.com/presentation/d/17HztLX0K-5lKhLsHORBBuOcJuXt7EuT5vUTownW0vM8/edit?slide=id.g3a4b156d497_0_762#slide=id.g3a4b156d497_0_762">adding automation for CVE reporting and remediation</a> from RHOAI-3.6 onwards</p>
+</div>
+<div class="fragment">
+<p><span class="math inline">\(\implies\)</span> for 3.6 z streams there should be a flurry of automated CVE PRs from a centralised bot instead of the current ad-hoc and manual PRs from component SMEs <span class="emoji" data-emoji="fire">🔥</span> <span class="emoji" data-emoji="fire">🔥</span> <span class="emoji" data-emoji="fire">🔥</span></p>
+</div>
+</section>
+<section id="what-to-do-for-the-earlier-releases" class="slide level2">
+<h2><span class="emoji" data-emoji="raised_hand">✋</span> What to do for the earlier releases?</h2>
+<div class="fragment">
+<p>It is recognised that the earlier releases will not have the benefit of the same level automation, but we can still try to improve the existing CVE handling process</p>
+</div>
+<div class="fragment">
+<p>The next few slides will cover some practical lessons and recommendations</p>
+</div>
+</section>
+<section id="what-language-is-your-component-written-in" class="slide level2 scrollable">
+<h2><span class="emoji" data-emoji="one">1️⃣</span> What language is your component written in?</h2>
+<div class="fragment">
+<p>We currently maintain components that are written in several different languages, e.g.</p>
+</div>
+<div class="columns">
+<div class="column" style="width:25%;">
+<div class="fragment fade-in-then-semi-out">
+<p>Java (<span class="math inline">\(\approx\)</span> 7%):</p>
+<ul>
+<li><code>odh-trustyai-service</code></li>
+</ul>
+</div>
+</div><div class="column" style="width:25%;">
+<div class="fragment fade-in-then-semi-out">
+<p>Rust (<span class="math inline">\(\approx\)</span> 15%):</p>
+<ul>
+<li><code>odh-fms-guardrails-orchestrator</code></li>
+<li><code>odh-trustyai-vllm-orchestrator-gateway-rhel9</code></li>
+</ul>
+</div>
+</div><div class="column" style="width:25%;">
+<div class="fragment fade-in-then-semi-out">
+<p>Go (<span class="math inline">\(\approx\)</span> 23%):</p>
+<ul>
+<li><code>odh-trustyai-service-operator</code></li>
+<li><code>odh-ta-lmes-driver</code></li>
+<li><code>odh-eval-hub</code></li>
+</ul>
+</div>
+</div><div class="column" style="width:25%;">
+<div class="fragment fade-in-then-semi-out">
+<p>Python (<span class="math inline">\(\approx\)</span> 55%):</p>
+<ul>
+<li><code>odh-trustyai-service-py</code></li>
+<li><code>odh-trustyai-garak-lls-provider-dsp</code></li>
+<li><code>odh-trustyai-nemo-guardrails-server</code></li>
+<li><code>odh-ta-lmes-job</code></li>
+<li><code>odh-built-in-detector</code></li>
+<li><code>odh-guardrails-detector-huggingface-runtime</code></li>
+<li><code>odh-caikit-nlp</code></li>
+</ul>
+</div>
+</div></div>
+</section>
+<section id="python-components" class="slide level2">
+<h2><span class="emoji" data-emoji="snake">🐍</span> Python components</h2>
+<div class="fragment">
+<p>Python components are the most common and seemingly have the most CVEs (and apparent false positives), so let’s focus on them</p>
+</div>
+<div class="fragment">
+<p>Let’s try to understand how the CVE trackers are generated and what can be done from our side</p>
+</div>
+</section>
+<section id="sboms-and-security-scanning" class="slide level2">
+<h2><span class="emoji" data-emoji="bomb">💣</span> SBOMs and Security scanning</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode numberSource bash number-lines code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><a href=""></a><span class="ex">Source</span> Code Push</span>
+<span id="cb6-2"><a href=""></a>  <span class="ex">└─</span> buildah <span class="er">(</span><span class="ex">build</span> + push image<span class="kw">)</span></span>
+<span id="cb6-3"><a href=""></a>       <span class="ex">├─</span> sbom-syft-generate <span class="er">(</span><span class="ex">Syft</span> → sbom-image.json + sbom-source.json<span class="kw">)</span></span>
+<span id="cb6-4"><a href=""></a>       <span class="ex">│</span>    └─ prepare-sboms <span class="er">(</span><span class="ex">Mobster</span> merges <span class="kw">&amp;</span> <span class="ex">enriches</span> → contextual SBOM<span class="kw">)</span></span>
+<span id="cb6-5"><a href=""></a>       <span class="ex">├─</span> clair-scan / roxctl-scan <span class="er">(</span><span class="ex">CVE</span> scanning<span class="kw">)</span></span>
+<span id="cb6-6"><a href=""></a>       <span class="ex">├─</span> clamav-scan <span class="er">(</span><span class="ex">malware</span> scanning<span class="kw">)</span></span>
+<span id="cb6-7"><a href=""></a>       <span class="ex">├─</span> sast-snyk-check <span class="er">(</span><span class="ex">SAST</span><span class="kw">)</span></span>
+<span id="cb6-8"><a href=""></a>       <span class="ex">└─</span> sbom-json-check <span class="er">(</span><span class="ex">SBOM</span> validation<span class="kw">)</span></span>
+<span id="cb6-9"><a href=""></a>  <span class="ex">└─</span> SBOM attached as OCI attestation → Quay.io</span>
+<span id="cb6-10"><a href=""></a>  <span class="ex">└─</span> Release pipeline: cosign attestation → Atlas/TPA/Trustify</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="fragment fade-in-then-semi-out">
+<p>In non-hermetic builds, the Syft scanner scans the entire source context directory for SBOM generation; this could include upstream artifacts like <code>poetry.lock</code> or <code>uv.lock</code> files</p>
+</div>
+<div class="fragment">
+<p>Hermetic builds fix this by generating the SBOM only from prefetched dependencies actually used in the build, giving you an accurate vulnerability profile.</p>
+</div>
+</section>
+<section id="sboms-and-security-scanning-1" class="slide level2">
+<h2><span class="emoji" data-emoji="bomb">💣</span> SBOMs and Security scanning</h2>
+<div class="fragment fade-in-then-semi-out">
+<p>To better understand the scanner output, you can use <a href="https://bomq.prodsec.redhat.com/#/">bomq UI</a>, this can be helpful to understand the dependency tree and the vulnerable packages</p>
+</div>
+<div class="fragment">
+<iframe width="1500" height="700" src="https://bomq.prodsec.redhat.com/" title="Webpage example"></iframe>
+</div>
+</section>
+<section id="what-happens-post-release" class="slide level2">
+<h2><span class="emoji" data-emoji="raised_hand">✋</span> What happens post-release?</h2>
+<div class="fragment fade-in-then-semi-out">
+<p>ProdSec does a bunch of things, including advanced grepping of the SBOMs to subsequently generate CVE trackers for the affected components</p>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<p><span class="math inline">\(\implies\)</span> if the SBOM is inaccurate, the CVE trackers will be inaccurate as well</p>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<p><span class="math inline">\(\implies\)</span> it might be prudent to enable hermetic builds for the earlier releases (2.25, 3.3, 3.4) to avoid false positives in CVE trackers</p>
+</div>
+<div class="fragment">
+<p>I intend to lead the work on this starting from next week; if you are interested in helping out, please reach out to me</p>
+</div>
+</section>
+<section id="lesson-learned-aipcc-package-availability" class="slide level2">
+<h2><span class="emoji" data-emoji="x">❌</span> Lesson learned: AIPCC package availability</h2>
+<ul>
+<li>First establish if the build is hermetic:
+<ul>
+<li>If not hermetic, you can still use packages from <code>pypi</code></li>
+<li>If hermetic, you need to use packages from the AIPCC index</li>
+</ul></li>
+<li>The main drawback of using the AIPCC index is that it may not always have the latest version of the package, so you might to trigger the request to get it onboarded; this process is cumbersome and takes a long time</li>
+</ul>
+</section>
+<section id="updating-packages-in-frozen-wheel-indexes" class="slide level2">
+<h2><span class="emoji" data-emoji="arrow_up">⬆️</span> Updating Packages in Frozen Wheel Indexes</h2>
+<div class="fragment fade-in-then-semi-out">
+<p>Policy doc can be accesed <a href="https://docs.aipcc.redhat.com/ecosystems/policy-updating-packages-in-frozen-indexes/">here</a></p>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<p>Note that there are two different repos used for this, depending on the RHOAI release:</p>
+<ul>
+<li>RHOAI-3.4 uses the RHAI wheel pipeline; <a href="https://gitlab.com/redhat/rhel-ai/rhai/pipeline/-/merge_requests/2256">here is an example of the MR</a></li>
+<li>RHOAI-3.5 uses the Fondue wheel pipeline; <a href="https://gitlab.com/redhat/rhel-ai/wheels/fondue/-/merge_requests/1478">here is an example of the MR</a></li>
+</ul>
+</div>
+<div class="fragment">
+<p><span class="emoji" data-emoji="trophy">🏆</span> Massive credit to <span class="citation" data-cites="ABeltramo">@ABeltramo</span> and <span class="citation" data-cites="Sai">@Sai</span> Chandra for persevering through this process</p>
+</div>
+</section>
+<section id="lesson-learned-container-health-images" class="slide level2">
+<h2><span class="emoji" data-emoji="stethoscope">🩺</span> Lesson learned: container health images</h2>
+<div class="fragment fade-in-then-semi-out">
+<p>Another important lesson learned is the need for proper container health monitoring, which can be accessed via <a href="https://team-tracker.apps.int.spoke.prod.us-west-2.aws.paas.redhat.com/#/releases/reports?report=container-health-index">OrgPulse</a>; an image grade is partly a result of a Konflux clair-scan</p>
+</div>
+<div class="fragment fade-in-then-semi-out">
+<p>Currently, on Konflux we have a bot that can auto-update digests for the base image, but this bot is unable to update the actual tag</p>
+</div>
+<div class="fragment fade-in">
+<p>This can be a bit problematic because the AIPCC image tags can be updated reasonably frequently</p>
+</div>
+<div class="fragment">
+<p><span class="math inline">\(\implies\)</span> we need a bot that can also update the image tag, not just the digest</p>
+</div>
+</section>
+<section id="lesson-learned-the-ic-role" class="slide level2">
+<h2><span class="emoji" data-emoji="ice_cream">🍨</span> Lesson learned: the IC role</h2>
+<div class="fragment fade-in-then-semi-out">
+<p>The newly established IC role is currently responsible for triaging CVE trackers, but I would propose that the IC:</p>
+</div>
+<div class="fragment">
+<ul>
+<li>aligns CVE due date with the relevant z-stream product code freeze and either does the work themselves or assigns the CVE tracker to someone else</li>
+</ul>
+</div>
+<div class="fragment">
+<ul>
+<li>raises MRs to update packages on the AIPCC indexes where appropriate</li>
+</ul>
+</div>
+<div class="fragment">
+<ul>
+<li>monitors the container health index and raises MRs to update the base image tag where appropriate</li>
+</ul>
+</div>
+<div class="fragment">
+<ul>
+<li>validates image build candidates by running the ODH tests</li>
+</ul>
 </div>
 
 </section></section>

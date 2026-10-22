@@ -18,6 +18,8 @@ format:
 
 # Dealing with the CVEs {background-iframe="ambient/index.html"} 
 
+# Part 1: Initial pearls of wisdom
+
 ## Addressing CVEs often feels like this:
 
 ![](img/farmer_meme.jpg){fig-align="center"}
@@ -311,4 +313,221 @@ When I review a CVE fix PR, I now only approve PRs iff:
 
 :::{.fragment}
 > it might be prudent to attach this evidence to the CVE tracker and PR, so that the reviewer can access it easily
+:::
+
+# Part 2: Towards a more unified CVE handling
+
+## :page_facing_up: Quick background
+
+![](img/farmer_meme.jpg){fig-align="center"}
+
+:::{.fragment}
+In Part 2 of this presention, we will cover:
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+- practical lessons from the past few months of clearing the CVE backlog
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+- how to unify the CVE handling in the future, including automation and IC 
+:::
+
+## :eyes: Initiatives to keep an eye on
+
+![](img/the_world_meme.png){fig-align="center"}
+
+:::{.fragment .fade-in-then-semi-out}
+@talayan is in the process of [adding automation for CVE reporting and remediation](https://docs.google.com/presentation/d/17HztLX0K-5lKhLsHORBBuOcJuXt7EuT5vUTownW0vM8/edit?slide=id.g3a4b156d497_0_762#slide=id.g3a4b156d497_0_762) from RHOAI-3.6 onwards 
+:::
+
+:::{.fragment}
+$\implies$ for 3.6 z streams there should be a flurry of automated CVE PRs from a centralised bot instead of the current ad-hoc and manual PRs from component SMEs :fire: :fire: :fire:
+:::
+
+## :raised_hand: What to do for the earlier releases?
+
+:::{.fragment}
+It is recognised that the earlier releases will not have the benefit of the same level automation, but we can still try to improve the existing CVE handling process
+:::
+
+:::{.fragment}
+The next few slides will cover some practical lessons and recommendations
+:::
+
+## :one: What language is your component written in? {.scrollable}
+
+:::{.fragment}
+We currently maintain components that are written in several different languages, e.g.
+:::
+
+:::: {.columns}
+::: {.column width="25%"}
+:::{.fragment .fade-in-then-semi-out}
+Java ($\approx$ 7%): 
+
+- `odh-trustyai-service`
+:::
+:::
+
+::: {.column width="25%"}
+:::{.fragment .fade-in-then-semi-out}
+Rust ($\approx$ 15%):
+
+- `odh-fms-guardrails-orchestrator`
+- `odh-trustyai-vllm-orchestrator-gateway-rhel9`
+:::
+:::
+
+::: {.column width="25%"}
+:::{.fragment .fade-in-then-semi-out}
+Go ($\approx$ 23%): 
+
+- `odh-trustyai-service-operator`
+- `odh-ta-lmes-driver`
+- `odh-eval-hub`
+:::
+:::
+
+::: {.column width="25%"}
+:::{.fragment .fade-in-then-semi-out}
+Python ($\approx$ 55%): 
+
+- `odh-trustyai-service-py`
+- `odh-trustyai-garak-lls-provider-dsp`
+- `odh-trustyai-nemo-guardrails-server`
+- `odh-ta-lmes-job`
+- `odh-built-in-detector`
+- `odh-guardrails-detector-huggingface-runtime`
+- `odh-caikit-nlp`
+:::
+:::
+::::
+
+## :snake: Python components 
+
+:::{.fragment}
+Python components are the most common and seemingly have the most CVEs (and apparent false positives), so let's focus on them 
+:::
+
+:::{.fragment}
+Let's try to understand how the CVE trackers are generated and what can be done from our side
+:::
+
+## :bomb: SBOMs and Security scanning
+
+```bash
+Source Code Push
+  └─ buildah (build + push image)
+       ├─ sbom-syft-generate (Syft → sbom-image.json + sbom-source.json)
+       │    └─ prepare-sboms (Mobster merges & enriches → contextual SBOM)
+       ├─ clair-scan / roxctl-scan (CVE scanning)
+       ├─ clamav-scan (malware scanning)
+       ├─ sast-snyk-check (SAST)
+       └─ sbom-json-check (SBOM validation)
+  └─ SBOM attached as OCI attestation → Quay.io
+  └─ Release pipeline: cosign attestation → Atlas/TPA/Trustify
+```
+
+:::{.fragment .fade-in-then-semi-out}
+In non-hermetic builds, the Syft scanner scans the entire source context directory for SBOM generation; this could include upstream artifacts like `poetry.lock` or `uv.lock` files
+:::
+
+:::{.fragment}
+Hermetic builds fix this by generating the SBOM only from prefetched dependencies actually used in the build, giving you an accurate vulnerability profile.
+:::
+
+## :bomb: SBOMs and Security scanning
+
+:::{.fragment .fade-in-then-semi-out}
+To better understand the scanner output, you can use [bomq UI](https://bomq.prodsec.redhat.com/#/), this can be helpful to understand the dependency tree and the vulnerable packages
+:::
+
+:::{.fragment}
+```{=html}
+<iframe width="1500" height="700" src="https://bomq.prodsec.redhat.com/" title="Webpage example"></iframe>
+```
+:::
+
+## :raised_hand: What happens post-release?
+
+:::{.fragment .fade-in-then-semi-out}
+ProdSec does a bunch of things, including advanced grepping of the SBOMs to subsequently generate CVE trackers for the affected components
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+$\implies$ if the SBOM is inaccurate, the CVE trackers will be inaccurate as well
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+$\implies$ it might be prudent to enable hermetic builds for the earlier releases (2.25, 3.3, 3.4) to avoid false positives in CVE trackers 
+:::
+
+:::{.fragment}
+I intend to lead the work on this starting from next week; if you are interested in helping out, please reach out to me 
+:::
+
+## :x: Lesson learned: AIPCC package availability
+
+- First establish if the build is hermetic:
+  - If not hermetic, you can still use packages from `pypi`
+  - If hermetic, you need to use packages from the AIPCC index
+
+- The main drawback of using the AIPCC index is that it may not always have the latest version of the package, so you might to trigger the request to get it onboarded; this process is cumbersome and takes a long time
+
+## :arrow_up: Updating Packages in Frozen Wheel Indexes
+
+:::{.fragment .fade-in-then-semi-out}
+Policy doc can be accesed [here](https://docs.aipcc.redhat.com/ecosystems/policy-updating-packages-in-frozen-indexes/)
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+Note that there are two different repos used for this, depending on the RHOAI release:
+
+  - RHOAI-3.4 uses the RHAI wheel pipeline; [here is an example of the MR](https://gitlab.com/redhat/rhel-ai/rhai/pipeline/-/merge_requests/2256)
+  - RHOAI-3.5 uses the Fondue wheel pipeline; [here is an example of the MR](https://gitlab.com/redhat/rhel-ai/wheels/fondue/-/merge_requests/1478)
+:::
+
+:::{.fragment}
+:trophy: Massive credit to @ABeltramo and @Sai Chandra for persevering through this process
+:::
+
+## :stethoscope: Lesson learned: container health images
+
+:::{.fragment .fade-in-then-semi-out}
+Another important lesson learned is the need for proper container health monitoring, which can be accessed via [OrgPulse](https://team-tracker.apps.int.spoke.prod.us-west-2.aws.paas.redhat.com/#/releases/reports?report=container-health-index); an image grade is partly a result of a Konflux clair-scan
+:::
+
+:::{.fragment .fade-in-then-semi-out}
+Currently, on Konflux we have a bot that can auto-update digests for the base image, but this bot is unable to update the actual tag
+:::
+
+:::{.fragment .fade-in}
+This can be a bit problematic because the AIPCC image tags can be updated reasonably frequently
+:::
+
+:::{.fragment}
+$\implies$ we need a bot that can also update the image tag, not just the digest 
+:::
+
+## :ice_cream: Lesson learned: the IC role
+
+:::{.fragment .fade-in-then-semi-out}
+The newly established IC role is currently responsible for triaging CVE trackers, but I would propose that the IC:
+:::
+
+:::{.fragment}
+- aligns CVE due date with the relevant z-stream product code freeze and either does the work themselves or assigns the CVE tracker to someone else
+:::
+
+:::{.fragment}
+- raises MRs to update packages on the AIPCC indexes where appropriate
+:::
+
+:::{.fragment}
+- monitors the container health index and raises MRs to update the base image tag where appropriate
+:::
+
+:::{.fragment}
+- validates image build candidates by running the ODH tests
 :::
